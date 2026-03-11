@@ -1,0 +1,189 @@
+METHODS — Condensation on Hygroscopic Substrates
+=================================================
+Complete parameter reference for all analyses and figures.
+Auto-generated from code audit of the OSF repository.
+
+1. SEGMENTATION
+   Model:                Cellpose "cyto3" (pretrained, no fine-tuning)
+   Diameter:             90 px
+   Flow threshold:       0.2
+   Cell probability:     1.0
+   Erosion radius:       3 px (morphological erosion with disk(3) to separate touching droplets)
+   Code:                 FigureSchematic/code/step0_segment_droplets.py
+
+2. DISTANCE COMPUTATION
+   Primary method:       Euclidean distance transform (EDT) from source boundary polygon
+   Raycast method:       100 sample points along source boundary polygon; for each ray,
+                         find the nearest droplet; delta = mean of per-ray minimum distances
+   Code:                 step1_batch_process.py in each figure folder
+
+3. DRY-ZONE WIDTH (delta)
+   Definition:           Mean of per-ray minimum droplet distances (raycast method)
+   Units:                micrometers (um)
+   Pre-computed values:  Embedded in step2 and step1_compute_all_metrics scripts
+
+4. RADIAL PROFILE — TANH FIT
+   Time window:          14.5–15.5 min (t = T_WINDOW)
+   Bin width:            100 um (for tanh fitting)
+   Min droplets/bin:     5
+   Model:                R(d) = (y_near + y_far)/2 + (y_far - y_near)/2 * tanh(alpha * (d - r0))
+   Bounds:
+     y_near:             [max(1.0, y_min*0.3), inf]
+     y_far:              [max(1.0, y_min*0.3), inf]
+     alpha:              [1e-6, 1.0] um^-1
+     r0:                 [x_min, x_max] um
+   Solver:               scipy.optimize.curve_fit, maxfev=10000
+   r0 exclusion:         r0 = NaN if transition_width > 0.75 * observation range
+   Code:                 FigureHGAggregate/code/step2_compute_metrics.py
+                         FigureFungi/code/step2_compute_metrics_fungi.py
+
+5. DERIVED METRICS (TANH)
+   max_slope:            alpha * (y_far - y_near) / 2   [um/um, dimensionless]
+   transition_width:     2 / alpha                      [um]
+   S (suppression):      y_far / y_near                 [dimensionless, from tanh params]
+
+6. RADIAL PROFILE — BROKEN-STICK FIT
+   Bin width:            200 um
+   Min droplets/bin:     5
+   Time window:          14.5–15.5 min
+   Model:                R(r') = R0 + m * min(r', r_break),  m > 0 constrained
+   Optimization:         Exhaustive search over candidate breakpoints (all interior bin centers);
+                         minimize SSE via least-squares
+   S (broken-stick):     R_far / R_near, where R_near = weighted mean for bins <= r_break,
+                         R_far = weighted mean for bins > r_break
+   Code:                 FigureTable/code/step1_compute_all_metrics.py
+
+7. ZONE DEFINITIONS (for size gradient metric)
+   Bin width:            50 um
+   Min droplets/bin:     10
+   Near:                 First 5 valid 50 um bins (closest to source)
+   Mid:                  750–1250 um from source boundary
+   Far:                  >= 1500 um from source boundary
+   Metric:               (R_far - R_near) / R_mid
+   Data source:          EDT per-droplet snapshots (not binned statistics)
+   Code:                 FigureHGAggregate/code/step6_panels_GH.py
+                         FigureFungi/code/step5_universal_panels.py
+
+8. BEYSENS SCALING ANALYSIS
+   Distance bins:        300 um (r' bins from source)
+   Min droplets/bin:     5
+   Min frames for fit:   5
+   Time window:          5–15 min
+   Trial:                2to1.4 (delta = 900 um)
+   Fit:                  log-log OLS:  log10(R_median) vs log10(t_min)
+   Outlier removal:      MAD +/- 3 sigma (median absolute deviation)
+   V-shape trimming:     Removes bins with non-monotonic R(t) at early times
+   Surface coverage:     epsilon = sum(pi * Ri^2) / A_bin
+   Area computation:     Steiner parallel-body formula:
+                         A_strip = P_body * (r_hi - r_lo) + pi * (r_hi^2 - r_lo^2)
+   Reference lines:      beta = 1/3 (diffusion-limited), beta = 1 (coalescence)
+   Colormap:             plasma
+   Code:                 FigureSchematic/code/step2_beysens_profile.py
+                         FigureSchematic/code/step3_figure_panels.py
+
+9. SURVIVAL ANALYSIS
+   Lifetime definition:  tau_fwd = t_death - 900 s  (forward lifetime from seed time = 15 min)
+   Censoring:            Right-censored for coalescence events (censored=True in tracking data)
+   Min frames/track:     3
+   Distance bins:        200 um
+   Min droplets/bin:     15 (for tau50 profile); 10 (for universal panels)
+   Distance bands:       [900, 1500, 2100, 2900] um centers, +/- 300 um half-width
+   Size matching:        IQR band of R_eq_seed (Q25 to Q75); min 30 droplets required
+   KM estimator:         lifelines.KaplanMeierFitter
+   tau50:                Median survival time from KM fit
+   Gradient:             dtau50/dr via scipy.stats.linregress on (distance_mm, tau50_min)
+                         Requires >= 3 valid distance bins
+   Code:                 FigureHGAggregate/code/step8_panels_IJKL.py
+                         FigureFungi/code/step5_universal_panels.py
+
+10. SIMULATION — VAPOR-SINK MODEL
+    Geometry:
+      Rmax:              8 mm (domain radius)
+      H:                 3 mm (domain height)
+      Rf:                1.5 mm (source radius)
+      h_cyl:             0.5 mm (source cylinder height)
+    Mesh:
+      dr = dz:           10 um
+    Transport:
+      D:                 2.5e-5 m^2/s (water vapor diffusivity in air)
+    Thermodynamics:
+      c_sat:             1.0 (normalized)
+      aw_agar:           1.00 (fixed, not hygroscopic)
+    Boundary conditions:
+      Source:             Dirichlet (Biot = 1e6, Robin BC in Dirichlet limit)
+      Outer:              No-flux (Neumann)
+    Growth law:
+      R^3 = R0^3 + Kg * S * t   (cubic; growth_exp = 3)
+      R0:                2 um
+      Kg:                1.48e-21 m^4/s
+      t_growth:          900 s (15 min)
+    Binning:             200 um
+    Code:                Simulation/params.py, solver.py, observables.py
+
+11. SIMULATION — CALIBRATION
+    Free parameters (3): c_inf, aw_1to1, aw_2to1
+    Fixed:               aw_agar = 1.00, S_nuc = 0, Kg = 1.48e-21 m^4/s
+    Initial guess:       c_inf = 1.32, aw_1to1 = 0.952, aw_2to1 = 0.656
+    Bounds:
+      c_inf:             [1.001, 1.50]
+      aw_1to1:           [0.60, 1.00]
+      aw_2to1:           [0.40, 0.98]
+    Residuals (25):      10 hygroscopic trials x 2 (delta + S) + 5 agar x 1 (S only)
+    Normalization:       delta_scale = 200 um, S_scale = 0.15
+    Optimizer:           scipy.optimize.minimize
+    Confidence intervals: Profile-likelihood 95% CIs for each parameter
+    Code:                Simulation/calibrate.py
+
+12. RSR LEAF ANALYSIS
+    Trials:              6 (RSR1, RSR2, RSR7 = Healthy; RSRDiseased3, 5, 6 = Diseased)
+    Reproducibility:     RSR2_Repeat (not included in main analysis)
+    Gradient:            dR/dr via Pearson linear regression (r_eq_mm vs dist_mm)
+    Summary:             dR/dr = 10.5 +/- 3.0 um/mm (mean +/- SEM across 6 trials)
+                         Pearson r = 0.57 +/- 0.08
+                         All p < 1e-6
+    Zone definitions:    From zone_summary.csv (Near/Mid/Far)
+    Data:                Fungal Pub/RSRFIGURE/rsr_finalized_metrics.csv
+                         Fungal Pub/RSRFIGURE/droplets_calibrated_mm.csv
+
+13. STATISTICAL TESTS
+    Weighted OLS:        For alpha vs delta (Panel E): weights = 1/SEM^2 on 6 group means
+    Pearson correlation: RSR dR/dr analysis; d^2-law (tau vs R0^2)
+    Spearman rank:       Alternative non-parametric correlation where noted
+    Linear regression:   scipy.stats.linregress for dtau50/dr slopes
+    R^2:                 Coefficient of determination from linregress.rvalue^2
+    SEM:                 Standard error of the mean (scipy.stats.sem or pandas .sem())
+
+14. FIGURE PANEL INDEX
+    Figure 1 (FigureSchematic):
+      Panel B:  Normalized droplet count vs time by distance zone
+                Zones: 800-1200, 1200-1600, 1600-2200, 2200-3000 um
+      Panel C:  Median R(t) by r' bin, Beysens scaling
+                Bins: 300 um, min 5 drops/bin, t = 5-15 min, plasma colormap
+    Figure 2 (FigureHGAggregate):
+      Panels B,C:   S vs (1-aw), delta vs (1-aw) strip charts
+      Panels G,H:   R(d) zone shading; (R_far-R_near)/R_mid vs (1-aw)
+      Panels I,J,K,L: KM survival curves, tau50 profiles, dtau/dr vs (1-aw)
+    Figure 3 (FigureFungi):
+      Panels B,C,D:  R*(d) per species, S strip chart, delta strip chart
+                     R* = R / R_far, R_far = mean of bins > 1500 um
+                     Bins: 200 um
+      Panel E:       alpha vs delta for 6 group means; weighted linear regression
+      Panels G,H:    dtau50/dr vs delta (30 trials, R^2 = 0.81 overall, 0.85 size-matched)
+                     (R_far-R_near)/R_mid vs delta (30 trials, R^2 = 0.66)
+    Table 1 (FigureTable):
+      Group means +/- SEM for delta, S, r_break across 6 groups
+    Figure 4 (Simulation):
+      Calibration and validation of vapor-sink model
+    Figure 5 (RSRFIGURE):
+      Real leaf condensation: dR/dr gradients for 6 trials
+
+15. SOFTWARE VERSIONS
+    Python:              3.11
+    Cellpose:            4.0.8
+    scikit-image:        0.26.0
+    numpy:               2.4.2
+    pandas:              3.0.1
+    matplotlib:          3.10.8
+    scipy:               (bundled with environment)
+    lifelines:           (KM survival analysis)
+    torch:               2.10.0

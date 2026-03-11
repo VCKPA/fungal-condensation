@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# Trash and experimental additions
+trash/
+additions/
+
+# Python
+__pycache__/
+*.pyc
+
+# Raw data (too large for GitHub; hosted on OSF)
+raw_data/

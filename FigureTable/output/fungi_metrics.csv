@@ -1,0 +1,16 @@
+trial_id,group,species,delta_um,delta_p1_um,delta_ray_std,n_rays,delta_fallback,S,r_break_um
+Green.1,Green,Green,279.5,197.2,103.4,67,False,1.3937528760424283,500.0
+Green.3,Green,Green,316.0,274.0,85.6,39,False,1.3484735712763734,500.0
+Green.3_new,Green,Green,297.8,123.8,189.3,52,False,1.1985929447876542,700.0
+Green.4,Green,Green,285.6,114.6,151.4,60,False,1.222837819065687,500.0
+Green.5,Green,Green,311.7,263.0,145.9,60,False,1.4202780036060398,500.0
+white.1,White,White,198.5,97.1,100.6,70,False,1.3720690185374174,700.0
+white.3,White,White,126.2,97.5,49.1,36,False,1.5138105830790738,1100.0
+white.4,White,White,325.4,250.6,96.6,47,False,1.3903472640247905,900.0
+white.5,White,White,131.6,101.3,57.6,74,False,1.2576200096170989,1900.0
+white.6,White,White,123.0,80.3,57.0,77,False,1.2161078089302182,1500.0
+Black.2,Black,Black,125.4,88.5,63.2,84,False,1.2615522752128991,500.0
+black.3,Black,Black,98.0,61.8,53.7,81,False,1.3236478371267206,700.0
+black.4,Black,Black,111.7,65.9,55.1,88,False,1.3094318890824828,500.0
+black.new,Black,Black,135.7,150.2,46.2,36,False,1.2979074537074136,500.0
+black.new2,Black,Black,78.3,50.6,40.6,55,False,1.2666455495512101,900.0
