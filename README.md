@@ -131,7 +131,9 @@ See `methods.txt` for the complete parameter reference.
 
 ## Raw Data
 
-Raw microscopy images and NPY segmentation masks are hosted on OSF: [DOI to be assigned]
+Raw microscopy images and NPY segmentation masks are hosted on OSF.
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18968891.svg)](https://doi.org/10.5281/zenodo.18968891)
 
 ## License
 
@@ -141,4 +143,4 @@ This project is licensed under the MIT License — see [LICENSE](LICENSE) for de
 
 If you use this code, please cite:
 
-> [Author list]. Fungal Hyphae Reorganize Condensation Fields as Distributed Hygroscopic Sinks. *Nature Communications* (2025). [DOI to be assigned]
+> [Author list]. Fungal Hyphae Reorganize Condensation Fields as Distributed Hygroscopic Sinks. *Nature Communications* (2025). https://doi.org/10.5281/zenodo.18968891
